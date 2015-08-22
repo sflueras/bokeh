@@ -128,6 +128,7 @@ locations =
   PolySelectTool:           require '../tool/gestures/poly_select_tool'
   SelectTool:               require '../tool/gestures/select_tool'
   ResizeTool:               require '../tool/gestures/resize_tool'
+  AutoResizeTool:           require '../tool/gestures/auto_resize_tool'
   TapTool:                  require '../tool/gestures/tap_tool'
   WheelZoomTool:            require '../tool/gestures/wheel_zoom_tool'
 
