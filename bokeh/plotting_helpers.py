@@ -13,7 +13,7 @@ from .models import (
     TapTool, CrosshairTool, DataRange1d, DatetimeAxis,
     FactorRange, Grid, HelpTool, HoverTool, LassoSelectTool, Legend, LinearAxis,
     LogAxis, PanTool, Plot, PolySelectTool,
-    PreviewSaveTool, Range, Range1d, ResetTool, ResizeTool, Tool,
+    PreviewSaveTool, Range, Range1d, ResetTool, AutoResizeTool, ResizeTool, Tool,
     WheelZoomTool, ColumnDataSource)
 
 from .properties import ColorSpec, Datetime
@@ -215,6 +215,7 @@ _known_tools = {
     "xwheel_zoom": lambda: WheelZoomTool(dimensions=["width"]),
     "ywheel_zoom": lambda: WheelZoomTool(dimensions=["height"]),
     "save": lambda: PreviewSaveTool(),
+    "autoresize": lambda: AutoResizeTool(),
     "resize": lambda: ResizeTool(),
     "click": "tap",
     "tap": lambda: TapTool(always_active=True),

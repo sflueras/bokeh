@@ -145,6 +145,18 @@ class ResizeTool(Tool):
     """
 
 
+class AutoResizeTool(Tool):
+    """ *toolbar icon*: |resize_icon|
+
+    The resize tool allows the user to left-drag a mouse or drag a finger
+    to resize the entire plot area on the screen.
+
+    .. |resize_icon| image:: /_images/icons/Resize.png
+        :height: 18pt
+
+    """
+
+
 class TapTool(Tool):
     """ *toolbar icon*: |tap_select_icon|
 
