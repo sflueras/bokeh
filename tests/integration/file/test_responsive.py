@@ -20,11 +20,11 @@ def test_autoresize_tool_causes_plot_to_respond_to_window_size_changing(output_f
     selenium.set_window_size(width=1000, height=600)
 
     canvas = selenium.find_element_by_tag_name('canvas')
-    assert canvas.size['height'] == 400
-    assert canvas.size['width'] == 800
+    initial_height = canvas.size['height']
+    initial_width = canvas.size['width']
 
     selenium.set_window_size(width=500, height=600)
 
     canvas = selenium.find_element_by_tag_name('canvas')
-    assert canvas.size['height'] != 400
-    assert canvas.size['width'] != 800
+    assert canvas.size['height'] != initial_height
+    assert canvas.size['width'] != initial_width
