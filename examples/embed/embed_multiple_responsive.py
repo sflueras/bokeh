@@ -9,14 +9,12 @@ import random
 
 ########## BUILD FIGURES ################
 
-TOOLS = 'autoresize'  # We use the autoresize tool to make the plots responsive
-
-PLOT_OPTIONS = dict(tools=TOOLS, plot_width=800, plot_height=300)
+PLOT_OPTIONS = dict(plot_width=800, plot_height=300)
 SCATTER_OPTIONS = dict(size=12, alpha=0.5)
 data = lambda: [random.choice([i for i in range(100)]) for r in range(10)]
-p1 = figure(**PLOT_OPTIONS).scatter(data(), data(), color="red", **SCATTER_OPTIONS)
-p2 = figure(**PLOT_OPTIONS).scatter(data(), data(), color="blue", **SCATTER_OPTIONS)
-p3 = figure(**PLOT_OPTIONS).scatter(data(), data(), color="green", **SCATTER_OPTIONS)
+p1 = figure(tools='pan,autoresize', **PLOT_OPTIONS).scatter(data(), data(), color="red", **SCATTER_OPTIONS)
+p2 = figure(tools='pan', **PLOT_OPTIONS).scatter(data(), data(), color="blue", **SCATTER_OPTIONS)
+p3 = figure(tools='pan,autoresize,resize', **PLOT_OPTIONS).scatter(data(), data(), color="green", **SCATTER_OPTIONS)
 
 ########## RENDER PLOTS ################
 
@@ -29,7 +27,7 @@ template = Template('''<!DOCTYPE html>
         {{ plot_resources }}
     </head>
     <body>
-    <h2>Resize the window to see the plots resizing</h2>
+    <h2>Resize the window to see some plots resizing</h2>
     {% for div in plot_div.values() %} {{ div }} {% endfor %}
     {{ plot_script }}
     </body>
