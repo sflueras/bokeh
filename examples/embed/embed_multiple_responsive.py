@@ -28,11 +28,19 @@ template = Template('''<!DOCTYPE html>
     </head>
     <body>
     <h2>Resize the window to see some plots resizing</h2>
-    {% for div in plot_div.values() %} {{ div }} {% endfor %}
+    <h3>Red - pan with autoresize</h3>
+    {{ plot_div.red }}
+    <h3>Green - pan with reize & autoresize (should maintain new aspect ratio)</h3>
+    {{ plot_div.green }}
+    <h3>Blue - pan no autoresize</h3>
+    {{ plot_div.blue }}
+
     {{ plot_script }}
     </body>
 </html>
 ''')
+
+#    {% for div in plot_div.values() %} {{ div }} {% endfor %}
 
 # Setup out resources
 resources = Resources(mode='relative-dev')
@@ -43,7 +51,7 @@ plot_resources = RESOURCES.render(
     css_files=resources.css_files,
 )
 
-script, div = components({'Red': p1, 'Blue': p2, 'Green': p3})
+script, div = components({'red': p1, 'blue': p2, 'green': p3})
 html = template.render(plot_resources=plot_resources, plot_script=script, plot_div=div)
 html_file = 'embed_multiple_responsive.html'
 with open(html_file, 'w') as f:
