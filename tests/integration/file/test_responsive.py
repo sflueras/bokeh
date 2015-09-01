@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 from bokeh.io import save
 from bokeh.plotting import figure
-from bokeh.resources import Resources
 
 import pytest
 pytestmark = pytest.mark.integration
@@ -28,7 +27,7 @@ def test_autoresize_tool_resizes_plot_while_maintaining_aspect_ratio(output_file
     # Make the plot with autoresize
     PLOT_OPTIONS = dict(tools='autoresize', plot_width=plot_width, plot_height=plot_height)
     plot = figure(**PLOT_OPTIONS).scatter([1, 2, 3], [3, 2, 3])
-    save(plot, resources=Resources(mode='server-dev', minified=False))
+    save(plot)
 
     # Open the browser with the plot and resize the window to get an initial measure
     selenium.get(output_file_url)
@@ -57,7 +56,7 @@ def test_autoresize_tool_maintains_a_minimum_width(output_file_url, selenium):
     # The aspect ratio is portrait but should not allow a width less than 100
     PLOT_OPTIONS = dict(tools='autoresize', plot_width=200, plot_height=400)
     plot = figure(**PLOT_OPTIONS).scatter([1, 2, 3], [3, 2, 3])
-    save(plot, resources=Resources(mode='server-dev', minified=False))
+    save(plot)
 
     # Open the browser with the plot and resize the window small
     selenium.get(output_file_url)
@@ -71,7 +70,7 @@ def test_autoresize_tool_maintains_a_minimum_height(output_file_url, selenium):
     # The aspect ratio is landscape but should not allow a height less than 100
     PLOT_OPTIONS = dict(tools='autoresize', plot_width=200, plot_height=100)
     plot = figure(**PLOT_OPTIONS).scatter([1, 2, 3], [3, 2, 3])
-    save(plot, resources=Resources(mode='server-dev', minified=False))
+    save(plot)
 
     # Open the browser with the plot and resize the window small
     selenium.get(output_file_url)
