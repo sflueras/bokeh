@@ -104,6 +104,8 @@ Bokeh.SingleIntervalTicker     = require("./ticking/single_interval_ticker")
 Bokeh.YearsTicker              = require("./ticking/years_ticker")
 
 # tools
+Bokeh.AutoResizeTool         = require("./tool/auto_resize_tool")
+
 Bokeh.ActionTool             = require("./tool/actions/action_tool")
 Bokeh.PreviewSaveTool        = require("./tool/actions/preview_save_tool")
 Bokeh.ResetTool              = require("./tool/actions/reset_tool")
@@ -115,7 +117,6 @@ Bokeh.LassoSelectTool        = require("./tool/gestures/lasso_select_tool")
 Bokeh.PanTool                = require("./tool/gestures/pan_tool")
 Bokeh.PolySelectTool         = require("./tool/gestures/poly_select_tool")
 Bokeh.ResizeTool             = require("./tool/gestures/resize_tool")
-Bokeh.AutoResizeTool         = require("./tool/gestures/auto_resize_tool")
 Bokeh.SelectTool             = require("./tool/gestures/select_tool")
 Bokeh.TapTool                = require("./tool/gestures/tap_tool")
 Bokeh.WheelZoomTool          = require("./tool/gestures/wheel_zoom_tool")

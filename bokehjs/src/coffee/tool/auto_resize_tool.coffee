@@ -1,8 +1,8 @@
 _ = require "underscore"
 $ = require "jquery"
-GestureTool = require "./gesture_tool"
+Tool = require "./tool"
 
-class AutoResizeToolView extends GestureTool.View
+class AutoResizeToolView extends Tool.View
 
   initialize: (options) ->
     super(options)
@@ -31,7 +31,7 @@ class AutoResizeToolView extends GestureTool.View
     canvas._set_dims([new_width, new_height])
     return null
 
-class AutoResizeTool extends GestureTool.Model
+class AutoResizeTool extends Tool.Model
   default_view: AutoResizeToolView
 
 module.exports =
