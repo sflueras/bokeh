@@ -123,19 +123,16 @@ class LineGLGlyph extends BaseGLGlyph
     VERT: """
       precision mediump float;
       
-      attribute float a_posx;
-      attribute float a_posy;
-      
+      attribute float a_position;
+            
       uniform vec2 u_canvas_size;
       uniform vec2 u_offset;
       uniform vec2 u_scale;
       
       void main () {
         
-        vec2 pos = vec2(a_posx, a_posy);
-        
         // Calculate position - the -0.5 is to correct for canvas origin
-        vec2 posn = pos * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
+        vec2 posn = a_position * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
         posn /= u_canvas_size;  // in 0..1
         gl_Position = vec4(posn*2.0-1.0, 0.0, 1.0);
         //gl_Position = vec4(a_posx, a_posy, 0.0, 1.0);
@@ -159,11 +156,9 @@ class LineGLGlyph extends BaseGLGlyph
       @prog = new gloo2.Program(gl)
       @prog.set_shaders(@VERT, @FRAG)
       # Buffers
-      @vbo_x = new gloo2.VertexBuffer(gl)
-      @prog.set_attribute('a_posx', 'float', [@vbo_x, 0, 0])
-      @vbo_y = new gloo2.VertexBuffer(gl)
-      @prog.set_attribute('a_posy', 'float', [@vbo_y, 0, 0])
-    
+      @vbo_position = new gloo2.VertexBuffer(gl)
+      @prog.set_attribute('a_position', 'vec', [@vbo_position, 0, 0])
+ 
     draw: (indices, mainGlyph, trans) ->
       
       nvertices = mainGlyph.glglyph.nvertices
@@ -174,8 +169,7 @@ class LineGLGlyph extends BaseGLGlyph
       
       # Select buffers from main glyph 
       # (which may be this glyph but maybe not if this is a (non)selection glyph)
-      @prog.set_attribute('a_posx', 'float', [mainGlyph.glglyph.vbo_x, 0, 0])
-      @prog.set_attribute('a_posy', 'float', [mainGlyph.glglyph.vbo_y, 0, 0])
+      @prog.set_attribute('a_position', 'vec2', [mainGlyph.glglyph.vbo_position, 0, 0])
     
       # Handle transformation to device coordinates
       @prog.set_uniform('u_canvas_size', 'vec2', [trans.width, trans.height])
@@ -185,11 +179,11 @@ class LineGLGlyph extends BaseGLGlyph
       @prog.draw(@gl.LINE_STRIP, [0, nvertices])
 
     _set_data: (nvertices) ->
-      n = nvertices * 4
-      @vbo_x.set_size(n)
-      @vbo_y.set_size(n)
-      @vbo_x.set_data(0, new Float32Array(@glyph.x))
-      @vbo_y.set_data(0, new Float32Array(@glyph.y))
+      @_bake()
+      
+      n = @V_position.lengt
+      @vbo_position.set_size(n)
+      @vbo_position.set_data(0, V_position)
 
     _bake: () ->
          #     self.vtype = np.dtype( [('a_position', 'f4', 2),
