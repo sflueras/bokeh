@@ -119,8 +119,38 @@ class BaseGLGlyph
 class LineGLGlyph extends BaseGLGlyph
     
     GLYPH: 'line'
-    VERT: 'xxx'
-    FRAG: 'xxx'
+    
+    VERT: """
+      precision mediump float;
+      
+      attribute float a_posx;
+      attribute float a_posy;
+      
+      uniform vec2 u_canvas_size;
+      uniform vec2 u_offset;
+      uniform vec2 u_scale;
+      
+      void main () {
+        
+        vec2 pos = vec2(a_posx, a_posy);
+        
+        // Calculate position - the -0.5 is to correct for canvas origin
+        vec2 posn = pos * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
+        posn /= u_canvas_size;  // in 0..1
+        gl_Position = vec4(posn*2.0-1.0, 0.0, 1.0);
+        //gl_Position = vec4(a_posx, a_posy, 0.0, 1.0);
+        gl_Position.y *= -1.0;
+      }
+    """
+    
+    FRAG: """
+      precision mediump float;
+      
+      void main () {
+        gl_FragColor = vec4(0.0, 0.5, 0.0, 1.0);
+      }
+    
+    """
     
     init: () ->
       gl = @gl
@@ -129,25 +159,47 @@ class LineGLGlyph extends BaseGLGlyph
       @prog = new gloo2.Program(gl)
       @prog.set_shaders(@VERT, @FRAG)
       # Buffers
-      @vbo_pos = new gloo2.VertexBuffer(gl)
+      @vbo_x = new gloo2.VertexBuffer(gl)
+      @prog.set_attribute('a_posx', 'float', [@vbo_x, 0, 0])
+      @vbo_y = new gloo2.VertexBuffer(gl)
+      @prog.set_attribute('a_posy', 'float', [@vbo_y, 0, 0])
     
     draw: (indices, mainGlyph, trans) ->
       
-      if @data_changed
-        @data_changed = false
-        @_set_data(@nvertices)
+      nvertices = mainGlyph.glglyph.nvertices
       
+      if @data_changed
+        @_set_data(nvertices)
+        @data_changed = false
+      
+      # Select buffers from main glyph 
+      # (which may be this glyph but maybe not if this is a (non)selection glyph)
+      @prog.set_attribute('a_posx', 'float', [mainGlyph.glglyph.vbo_x, 0, 0])
+      @prog.set_attribute('a_posy', 'float', [mainGlyph.glglyph.vbo_y, 0, 0])
     
+      # Handle transformation to device coordinates
+      @prog.set_uniform('u_canvas_size', 'vec2', [trans.width, trans.height])
+      @prog.set_uniform('u_offset', 'vec2', [trans.dx[0], trans.dy[0]])
+      @prog.set_uniform('u_scale', 'vec2', [trans.sx, trans.sy])
+      
+      @prog.draw(@gl.LINE_STRIP, [0, nvertices])
+
     _set_data: (nvertices) ->
-    
-    
+      n = nvertices * 4
+      @vbo_x.set_size(n)
+      @vbo_y.set_size(n)
+      @vbo_x.set_data(0, new Float32Array(@glyph.x))
+      @vbo_y.set_data(0, new Float32Array(@glyph.y))
+
     _bake: () ->
          #     self.vtype = np.dtype( [('a_position', 'f4', 2),
          #                       ('a_segment',  'f4', 2),
          #                       ('a_angles',   'f4', 2),
          #                       ('a_tangents', 'f4', 4),
          #                       ('a_texcoord', 'f4', 2) ])
-                                
+      
+      # This is what you get if you port 50 lines of numpy code to JS.
+                              
       # Init array of implicit shape nx2
       n = @nvertices
       _x = new Float32Array(@x)
@@ -162,7 +214,7 @@ class LineGLGlyph extends BaseGLGlyph
       
       # todo: what if I split the tangents up in two arrays, I think it would simplify the code ...
       
-      # Positipn
+      # Position
       for i in [0...n]
           V_position[i*2+0] = _x[i]
           V_position[i*2+1] = _y[i]
@@ -384,8 +436,8 @@ class MarkerGLGlyph extends BaseGLGlyph
     # The program
     @prog = new gloo2.Program(gl)
     @prog.set_shaders(@VERT, frag)
-    @vbo_x = new gloo2.VertexBuffer(gl)
     # Real attributes
+    @vbo_x = new gloo2.VertexBuffer(gl)
     @prog.set_attribute('a_x', 'float', [@vbo_x, 0, 0])
     @vbo_y = new gloo2.VertexBuffer(gl)
     @prog.set_attribute('a_y', 'float', [@vbo_y, 0, 0])
@@ -529,3 +581,4 @@ class SquareGLGlyph extends MarkerGLGlyph
 module.exports =
   CircleGLGlyph: CircleGLGlyph
   SquareGLGlyph: SquareGLGlyph
+  LineGLGlyph: LineGLGlyph
