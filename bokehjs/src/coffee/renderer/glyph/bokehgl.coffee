@@ -123,7 +123,7 @@ class LineGLGlyph extends BaseGLGlyph
     VERT: """
       precision mediump float;
       
-      attribute float a_position;
+      attribute vec2 a_position;
             
       uniform vec2 u_canvas_size;
       uniform vec2 u_offset;
@@ -157,11 +157,12 @@ class LineGLGlyph extends BaseGLGlyph
       @prog.set_shaders(@VERT, @FRAG)
       # Buffers
       @vbo_position = new gloo2.VertexBuffer(gl)
-      @prog.set_attribute('a_position', 'vec', [@vbo_position, 0, 0])
+      @prog.set_attribute('a_position', 'vec2', [@vbo_position, 0, 0])
  
     draw: (indices, mainGlyph, trans) ->
       
-      nvertices = mainGlyph.glglyph.nvertices
+      # Actual number of vertices us 4x that of the number of line nodes.
+      nvertices = mainGlyph.glglyph.nvertices * 4
       
       if @data_changed
         @_set_data(nvertices)
@@ -181,9 +182,9 @@ class LineGLGlyph extends BaseGLGlyph
     _set_data: (nvertices) ->
       @_bake()
       
-      n = @V_position.lengt
+      n = @V_position.length * 4
       @vbo_position.set_size(n)
-      @vbo_position.set_data(0, V_position)
+      @vbo_position.set_data(0, @V_position)
 
     _bake: () ->
          #     self.vtype = np.dtype( [('a_position', 'f4', 2),
@@ -196,8 +197,8 @@ class LineGLGlyph extends BaseGLGlyph
                               
       # Init array of implicit shape nx2
       n = @nvertices
-      _x = new Float32Array(@x)
-      _y = new Float32Array(@y)
+      _x = new Float32Array(@glyph.x)
+      _y = new Float32Array(@glyph.y)
       
       # Init vertex data
       V_position = Vp = new Float32Array(n*2)
@@ -237,7 +238,7 @@ class LineGLGlyph extends BaseGLGlyph
       V_tangents[(n-1)+3] = T[(n-2)+1]
       
       # Angles
-      A = new float32Array(n)
+      A = new Float32Array(n)
       for i in [0...n]
         A[i] = Math.atan2(Vt[i*4+0]*Vt[i*4+3] - Vt[i*4+1]*Vt[i*4+2],
                           Vt[i*4+0]*Vt[i*4+2] - Vt[i*4+1]*Vt[i*4+3])
@@ -263,9 +264,9 @@ class LineGLGlyph extends BaseGLGlyph
       @V_texcoord = V_texcoord2 = new Float32Array(m*2)
       #
       # Arg, we really need an ndarray thing in JS :/
-      for i in [0...n]
-         for j in [0...4]
-            for k in [0...2]
+      for i in [0...n]  # all nodes on the line
+         for j in [0...4]  # the four quad vertices
+            for k in [0...2]  # xy
               V_position2[4*i*2+j*2+k] = V_position[i*2+k]
               V_segment2[4*i*2+j*2+k] = V_segment[i*2+k]
               V_angles2[4*i*2+j*2+k] = V_angles[i*2+k]
