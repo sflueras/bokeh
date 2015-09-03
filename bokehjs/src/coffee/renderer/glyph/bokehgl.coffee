@@ -120,7 +120,259 @@ class LineGLGlyph extends BaseGLGlyph
     
     GLYPH: 'line'
     
+    JOIN:
+      'miter': 0, 'round': 1, 'bevel': 2
+
+    CAPS:
+      '': 0, 'none': 0, '.': 0,
+      'round': 1, ')': 1, '(': 1, 'o': 1,
+      'triangle in': 2, '<': 2, 'triangle out': 3, '>': 3,
+      'square': 4, '[': 4, ']': 4, '=': 4,
+      'butt': 5, '|': 5
+       
     VERT: """
+      precision mediump float;
+      
+      const float PI = 3.14159265358979323846264;
+      const float THETA = 15.0 * 3.14159265358979323846264/180.0;
+      
+      uniform vec2 u_canvas_size, u_offset, u_scale;
+            
+      uniform vec4 u_color;
+      uniform float u_linewidth;
+      uniform float u_antialias;
+      uniform vec2 u_linecaps;
+      uniform float u_linejoin;
+      uniform float u_miter_limit;
+      uniform float u_length;
+      uniform float u_dash_phase;
+      uniform float u_dash_period;
+      uniform float u_dash_index;
+      uniform vec2 u_dash_caps;
+      uniform float u_closed;
+      // TODO: some uniforms can be set directly in fragment shader, rather than passing as a varying
+      
+      attribute vec2 a_position;
+      attribute vec4 a_tangents;
+      attribute vec2 a_segment;
+      attribute vec2 a_angles;
+      attribute vec2 a_texcoord;
+      
+      varying vec4  v_color;
+      varying vec2  v_segment;
+      varying vec2  v_angles;
+      varying vec2  v_linecaps;
+      varying vec2  v_texcoord;
+      varying vec2  v_miter;
+      varying float v_miter_limit;
+      varying float v_length;
+      varying float v_linejoin;
+      varying float v_linewidth;
+      varying float v_antialias;
+      varying float v_dash_phase;
+      varying float v_dash_period;
+      varying float v_dash_index;
+      varying vec2  v_dash_caps;
+      varying float v_closed;
+      
+      float cross(in vec2 v1, in vec2 v2)
+      {
+          return v1.x*v2.y - v1.y*v2.x;
+      }
+      
+      float signed_distance(in vec2 v1, in vec2 v2, in vec2 v3)
+      {
+          return cross(v2-v1,v1-v3) / length(v2-v1);
+      }
+      
+      void rotate( in vec2 v, in float alpha, out vec2 result )
+      {
+          float c = cos(alpha);
+          float s = sin(alpha);
+          result = vec2( c*v.x - s*v.y,
+                         s*v.x + c*v.y );
+      }
+      
+      void main()
+      {          
+          v_color = u_color;
+          float scale = 1.0;//u_scale;  // TODO: does this make sense?
+          v_linewidth = u_linewidth;
+          v_antialias = u_antialias;
+          v_linecaps = u_linecaps;
+          v_linejoin    = u_linejoin;
+          v_miter_limit = u_miter_limit;
+          v_length      = u_length;
+          v_dash_phase  = u_dash_phase;
+          v_dash_period = u_dash_period;
+          v_dash_index  = u_dash_index;
+          v_dash_caps   = u_dash_caps;
+          v_closed = u_closed;
+          bool closed = (v_closed > 0.0);
+          
+          // Attributes to varyings
+          v_angles  = a_angles;
+          v_segment = a_segment * scale;
+          v_length  = v_length * scale;
+      
+          // Thickness below 1 pixel are represented using a 1 pixel thickness
+          // and a modified alpha
+          v_color.a = min(v_linewidth, v_color.a);
+          v_linewidth = max(v_linewidth, 1.0);
+      
+      
+          // If color is fully transparent we just will discard the fragment anyway
+          if( v_color.a <= 0.0 )
+          {
+              gl_Position = vec4(0.0,0.0,0.0,1.0);
+              return;
+          }
+      
+          // This is the actual half width of the line
+          float w = ceil(1.25*v_antialias+v_linewidth)/2.0;
+      
+          vec2 position = a_position * scale * u_scale;
+          
+          vec2 t1 = normalize(a_tangents.xy);
+          vec2 t2 = normalize(a_tangents.zw);
+          float u = a_texcoord.x;
+          float v = a_texcoord.y;
+          vec2 o1 = vec2( +t1.y, -t1.x);
+          vec2 o2 = vec2( +t2.y, -t2.x);
+      
+      
+          // This is a join
+          // ----------------------------------------------------------------
+          if( t1 != t2 ) {
+              float angle  = atan (t1.x*t2.y-t1.y*t2.x, t1.x*t2.x+t1.y*t2.y);
+              vec2 t  = normalize(t1+t2);
+              vec2 o  = vec2( + t.y, - t.x);
+      
+              if ( v_dash_index > 0.0 )
+              {
+                  // Broken angle
+                  // ----------------------------------------------------------------
+                  if( (abs(angle) > THETA) ) {
+                      position += v * w * o / cos(angle/2.0);
+                      float s = sign(angle);
+                      if( angle < 0.0 ) {
+                          if( u == +1.0 ) {
+                              u = v_segment.y + v * w * tan(angle/2.0);
+                              if( v == 1.0 ) {
+                                  position -= 2.0 * w * t1 / sin(angle);
+                                  u -= 2.0 * w / sin(angle);
+                              }
+                          } else {
+                              u = v_segment.x - v * w * tan(angle/2.0);
+                              if( v == 1.0 ) {
+                                  position += 2.0 * w * t2 / sin(angle);
+                                  u += 2.0*w / sin(angle);
+                              }
+                          }
+                      } else {
+                          if( u == +1.0 ) {
+                              u = v_segment.y + v * w * tan(angle/2.0);
+                              if( v == -1.0 ) {
+                                  position += 2.0 * w * t1 / sin(angle);
+                                  u += 2.0 * w / sin(angle);
+                              }
+                          } else {
+                              u = v_segment.x - v * w * tan(angle/2.0);
+                              if( v == -1.0 ) {
+                                  position -= 2.0 * w * t2 / sin(angle);
+                                  u -= 2.0*w / sin(angle);
+                              }
+                          }
+                      }
+                      // Continuous angle
+                      // ------------------------------------------------------------
+                  } else {
+                      position += v * w * o / cos(angle/2.0);
+                      if( u == +1.0 ) u = v_segment.y;
+                      else            u = v_segment.x;
+                  }
+              }
+      
+              // Solid line
+              // --------------------------------------------------------------------
+              else
+              {
+                  position.xy += v * w * o / cos(angle/2.0);
+                  if( angle < 0.0 ) {
+                      if( u == +1.0 ) {
+                          u = v_segment.y + v * w * tan(angle/2.0);
+                      } else {
+                          u = v_segment.x - v * w * tan(angle/2.0);
+                      }
+                  } else {
+                      if( u == +1.0 ) {
+                          u = v_segment.y + v * w * tan(angle/2.0);
+                      } else {
+                          u = v_segment.x - v * w * tan(angle/2.0);
+                      }
+                  }
+              }
+      
+          // This is a line start or end (t1 == t2)
+          // ------------------------------------------------------------------------
+          } else {
+              position += v * w * o1;
+              if( u == -1.0 ) {
+                  u = v_segment.x - w;
+                  position -=  w * t1;
+              } else {
+                  u = v_segment.y + w;
+                  position +=  w * t2;
+              }
+          }
+      
+          // Miter distance
+          // ------------------------------------------------------------------------
+          vec2 t;
+          vec2 curr = a_position*scale;
+          if( a_texcoord.x < 0.0 ) {
+              vec2 next = curr + t2*(v_segment.y-v_segment.x);
+      
+              rotate( t1, +a_angles.x/2.0, t);
+              v_miter.x = signed_distance(curr, curr+t, position);
+      
+              rotate( t2, +a_angles.y/2.0, t);
+              v_miter.y = signed_distance(next, next+t, position);
+          } else {
+              vec2 prev = curr - t1*(v_segment.y-v_segment.x);
+      
+              rotate( t1, -a_angles.x/2.0,t);
+              v_miter.x = signed_distance(prev, prev+t, position);
+      
+              rotate( t2, -a_angles.y/2.0,t);
+              v_miter.y = signed_distance(curr, curr+t, position);
+          }
+      
+          if (!closed && v_segment.x <= 0.0) {
+              v_miter.x = 1e10;
+          }
+          if (!closed && v_segment.y >= v_length)
+          {
+              v_miter.y = 1e10;
+          }
+      
+          v_texcoord = vec2( u, v*w );
+          
+          // Calculate position - the -0.5 is to correct for canvas origin
+          //vec2 posn = position * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
+          //posn /= u_canvas_size;  // in 0..1
+          //gl_Position = vec4(posn*2.0-1.0, 0.0, 1.0);
+          
+          //vec2 normpos = a_position * u_scale + u_offset - vec2(0.5, 0.5);
+          vec2 normpos = position + u_offset - vec2(0.5, 0.5);
+          normpos /= u_canvas_size;  // in 0..1     
+          gl_Position = vec4(normpos*2.0-1.0, 0.0, 1.0);
+          gl_Position.y *= -1.0;
+      }
+
+    """
+    
+    VERT_: """
       precision mediump float;
       
       attribute vec2 a_position;
@@ -135,10 +387,10 @@ class LineGLGlyph extends BaseGLGlyph
         vec2 posn = a_position * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
         posn /= u_canvas_size;  // in 0..1
         gl_Position = vec4(posn*2.0-1.0, 0.0, 1.0);
-        //gl_Position = vec4(a_posx, a_posy, 0.0, 1.0);
         gl_Position.y *= -1.0;
       }
     """
+    
     
     FRAG: """
       precision mediump float;
@@ -155,9 +407,18 @@ class LineGLGlyph extends BaseGLGlyph
       # The program
       @prog = new gloo2.Program(gl)
       @prog.set_shaders(@VERT, @FRAG)
+      @index_buffer = new gloo2.IndexBuffer(gl)
       # Buffers
       @vbo_position = new gloo2.VertexBuffer(gl)
+      @vbo_tangents = new gloo2.VertexBuffer(gl)
+      @vbo_segment = new gloo2.VertexBuffer(gl)
+      @vbo_angles = new gloo2.VertexBuffer(gl)
+      @vbo_texcoord = new gloo2.VertexBuffer(gl)
       @prog.set_attribute('a_position', 'vec2', [@vbo_position, 0, 0])
+      @prog.set_attribute('a_tangents', 'vec4', [@vbo_tangents, 0, 0])
+      @prog.set_attribute('a_segment', 'vec2', [@vbo_segment, 0, 0])
+      @prog.set_attribute('a_angles', 'vec2', [@vbo_angles, 0, 0])
+      @prog.set_attribute('a_texcoord', 'vec2', [@vbo_texcoord, 0, 0])
  
     draw: (indices, mainGlyph, trans) ->
       
@@ -167,6 +428,9 @@ class LineGLGlyph extends BaseGLGlyph
       if @data_changed
         @_set_data(nvertices)
         @data_changed = false
+      if @visuals_changed
+        @_set_visuals(nvertices)
+        @visuals_changed = false
       
       # Select buffers from main glyph 
       # (which may be this glyph but maybe not if this is a (non)selection glyph)
@@ -177,15 +441,52 @@ class LineGLGlyph extends BaseGLGlyph
       @prog.set_uniform('u_offset', 'vec2', [trans.dx[0], trans.dy[0]])
       @prog.set_uniform('u_scale', 'vec2', [trans.sx, trans.sy])
       
-      @prog.draw(@gl.LINE_STRIP, [0, nvertices])
-
+      #@prog.draw(@gl.TRIANGLES, [0, nvertices])
+      @index_buffer.set_size(@I_triangles.length*2)
+      @index_buffer.set_data(0, new Uint16Array(@I_triangles))
+      @prog.draw(@gl.TRIANGLE_STRIP, @index_buffer)
+      console.log(@I_triangles)
+      window.Y = @I_triangles
+    
     _set_data: (nvertices) ->
       @_bake()
       
-      n = @V_position.length * 4
-      @vbo_position.set_size(n)
+      @vbo_position.set_size(@V_position.length*4);
       @vbo_position.set_data(0, @V_position)
-
+      
+      @vbo_tangents.set_size(@V_tangents.length*4)
+      @vbo_tangents.set_data(0, @V_tangents)
+      
+      @vbo_segment.set_size(@V_segment.length*4)
+      @vbo_segment.set_data(0, @V_segment)
+      
+      @vbo_angles.set_size(@V_angles.length*4)
+      @vbo_angles.set_data(0, @V_angles)
+      
+      @vbo_texcoord.set_size(@V_texcoord.length*4)
+      @vbo_texcoord.set_data(0, @V_texcoord)
+    
+    _set_visuals: (nvertices) ->
+      window.X = this
+      
+      color = color2rgba(@glyph.visuals.line.color.value(), @glyph.visuals.line.alpha.value())
+      cap = @CAPS[@glyph.visuals.line.cap.value()]
+      
+      @prog.set_uniform('u_color', 'vec4', color)
+      @prog.set_uniform('u_linewidth', 'float', [5])#[@glyph.visuals.line.width.value()])
+      @prog.set_uniform('u_antialias', 'float', [0.9])  # Smaller aa-region to obtain crisper images
+      
+      @prog.set_uniform('u_linecaps', 'vec2', [cap, cap])
+      @prog.set_uniform('u_linejoin', 'float', [@JOIN[@glyph.visuals.line.join.value()]])
+      @prog.set_uniform('u_miter_limit', 'float', [10.0])  # Should be a good value
+      @prog.set_uniform('u_length', 'float', [@cumsum])
+      @prog.set_uniform('u_dash_phase', 'float', [@glyph.visuals.line.dash_offset.value()])
+      
+      #@prog.set_uniform('u_dash_period', 'float', [@glyph.visuals.line.xxx.value()])
+      #@prog.set_uniform('u_dash_index', 'float', [@glyph.visuals.line.xxx.value()])
+      @prog.set_uniform('u_dash_caps', 'vec2', [cap, cap])  # TODO: Check what canvas does
+      @prog.set_uniform('u_closed', 'float', [0])  # TODO: we dont do closed lines; rip this out
+    
     _bake: () ->
          #     self.vtype = np.dtype( [('a_position', 'f4', 2),
          #                       ('a_segment',  'f4', 2),
@@ -297,23 +598,22 @@ class LineGLGlyph extends BaseGLGlyph
       #I = np.resize( np.array([0,1,2,1,2,3], dtype=np.uint32), (n-1)*(2*3))
       #I += np.repeat( 4*np.arange(n-1), 6)
       ni = (n-1) * 6
-      @I_triangles = I = new Uint32Array(ni*2)
-      for i in [0...ni]
-        I[i*6+0] = 0
-        I[i*6+1] = 1
-        I[i*6+2] = 2
-        I[i*6+3] = 1
-        I[i*6+4] = 2
-        I[i*6+5] = 3
-      # todo: I have *no* idea what this second part is for...
-      for i in [0...ni]
-        I[ni+i*6+0] = i*4
-        I[ni+i*6+1] = i*4
-        I[ni+i*6+2] = i*4
-        I[ni+i*6+3] = i*4
-        I[ni+i*6+4] = i*4
-        I[ni+i*6+5] = i*4
-      
+      @I_triangles = I = new Uint32Array(ni)
+      for i in [0...n]
+        I[i*6+0] = 0 + 4*i
+        I[i*6+1] = 1 + 4*i
+        I[i*6+2] = 2 + 4*i
+        I[i*6+3] = 0 + 4*i
+        I[i*6+4] = 3 + 4*i
+        I[i*6+5] = 1 + 4*i
+      #for i in [0...n]
+      #  I[i*6+0] = 0 + 4*i
+      #  I[i*6+1] = 1 + 4*i
+      #  I[i*6+2] = 2 + 4*i
+      #  I[i*6+3] = 1 + 4*i
+      #  I[i*6+4] = 2 + 4*i
+      #  I[i*6+5] = 3 + 4*i
+            
       # todo: if I is larger than 65k, we need to draw in parts
       @cumsum = cumsum  # L[-1] in Nico's code
 
