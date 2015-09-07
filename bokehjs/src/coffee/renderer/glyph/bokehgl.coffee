@@ -414,28 +414,26 @@ class LineGLGlyph extends BaseGLGlyph
       @vbo_segment = new gloo2.VertexBuffer(gl)
       @vbo_angles = new gloo2.VertexBuffer(gl)
       @vbo_texcoord = new gloo2.VertexBuffer(gl)
-      @prog.set_attribute('a_position', 'vec2', [@vbo_position, 0, 0])
-      @prog.set_attribute('a_tangents', 'vec4', [@vbo_tangents, 0, 0])
-      @prog.set_attribute('a_segment', 'vec2', [@vbo_segment, 0, 0])
-      @prog.set_attribute('a_angles', 'vec2', [@vbo_angles, 0, 0])
-      @prog.set_attribute('a_texcoord', 'vec2', [@vbo_texcoord, 0, 0])
  
     draw: (indices, mainGlyph, trans) ->
       
-      # Actual number of vertices us 4x that of the number of line nodes.
-      nvertices = mainGlyph.glglyph.nvertices * 4
-      
       if @data_changed
-        @_set_data(nvertices)
+        @_set_data()
         @data_changed = false
       if @visuals_changed
-        @_set_visuals(nvertices)
+        @_set_visuals()
         @visuals_changed = false
       
       # Select buffers from main glyph 
       # (which may be this glyph but maybe not if this is a (non)selection glyph)
       @prog.set_attribute('a_position', 'vec2', [mainGlyph.glglyph.vbo_position, 0, 0])
-    
+      @prog.set_attribute('a_tangents', 'vec4', [mainGlyph.glglyph.vbo_tangents, 0, 0])
+      @prog.set_attribute('a_segment', 'vec2', [mainGlyph.glglyph.vbo_segment, 0, 0])
+      @prog.set_attribute('a_angles', 'vec2', [mainGlyph.glglyph.vbo_angles, 0, 0])
+      @prog.set_attribute('a_texcoord', 'vec2', [mainGlyph.glglyph.vbo_texcoord, 0, 0])
+      #
+      @prog.set_uniform('u_length', 'float', [mainGlyph.glglyph.cumsum])
+      
       # Handle transformation to device coordinates
       @prog.set_uniform('u_canvas_size', 'vec2', [trans.width, trans.height])
       @prog.set_uniform('u_offset', 'vec2', [trans.dx[0], trans.dy[0]])
@@ -444,12 +442,54 @@ class LineGLGlyph extends BaseGLGlyph
       #@prog.draw(@gl.TRIANGLES, [0, nvertices])
       @index_buffer.set_size(@I_triangles.length*2)
       @index_buffer.set_data(0, new Uint16Array(@I_triangles))
-      @prog.draw(@gl.TRIANGLE_STRIP, @index_buffer)
-      console.log(@I_triangles)
+      @prog.draw(@gl.TRIANGLES, @index_buffer)
       window.Y = @I_triangles
     
-    _set_data: (nvertices) ->
-      @_bake()
+    _set_data: () ->
+      #@_bake()
+      
+      @I_triangles = new Int32Array([ 0,  1,  2,  1,  2,  3,  4,  5,  6,  5,  6,  7,  8,  9, 10,  9, 10, 11, 12, 13, 14, 13, 14, 15, 16, 17, 18, 17, 18, 19, 20, 21, 22, 21,      22, 23, 24, 25, 26, 25, 26, 27, 28, 29, 30, 29, 30, 31, 32, 33, 34,      33, 34, 35])
+      @V_position = new Float32Array([ 0.0        ,  0.2       ,  0.0        ,  0.2       ,  0.69813168,
+        0.84278762,  0.69813168,  0.84278762,  0.69813168,  0.84278762,
+        0.69813168,  0.84278762,  1.39626336,  1.18480778,  1.39626336,
+        1.18480778,  1.39626336,  1.18480778,  1.39626336,  1.18480778,
+        2.09439516,  1.06602538,  2.09439516,  1.06602538,  2.09439516,
+        1.06602538,  2.09439516,  1.06602538,  2.79252672,  0.54202014,
+        2.79252672,  0.54202014,  2.79252672,  0.54202014,  2.79252672,
+        0.54202014,  3.49065852, -0.14202014,  3.49065852, -0.14202014,
+        3.49065852, -0.14202014,  3.49065852, -0.14202014,  4.18879032,
+       -0.6660254 ,  4.18879032, -0.6660254 ,  4.18879032, -0.6660254 ,
+        4.18879032, -0.6660254 ,  4.88692188, -0.78480774,  4.88692188,
+       -0.78480774,  4.88692188, -0.78480774,  4.88692188, -0.78480774,
+        5.58505344, -0.44278762,  5.58505344, -0.44278762,  5.58505344,
+       -0.44278762,  5.58505344, -0.44278762,  6.28318548,  0.2       ,
+        6.28318548,  0.2       ])
+      
+      @V_tangents = new Float32Array([ 0.69813168,  0.64278764,  0.69813168,  0.64278764,  0.69813168,      0.64278764,  0.69813168,  0.64278764,  0.69813168,  0.64278764,      0.69813168,  0.34202015,  0.69813168,  0.64278764,  0.69813168,      0.34202015,  0.69813168,  0.64278764,  0.69813168, 0.34202015,      0.69813168,  0.64278764,  0.69813168,  0.34202015,  0.69813168,      0.34202015,  0.69813168, -0.11878235,  0.69813168,  0.34202015,      0.69813168, -0.11878235,  0.69813168,  0.34202015,  0.69813168,      -0.11878235,  0.69813168,  0.34202015,  0.69813168, -0.11878235,      0.69813168, -0.11878235,  0.69813168, -0.52400523,  0.69813168,      -0.11878235,  0.69813168, -0.52400523,  0.69813168, -0.11878235,      0.69813168, -0.52400523,  0.69813168, -0.11878235,  0.69813168,      -0.52400523,  0.69813168, -0.52400523,  0.69813168, -0.68404031,      0.69813168,-0.52400523,  0.69813168, -0.68404031,  0.69813168,      -0.52400523,  0.69813168, -0.68404031,  0.69813168, -0.52400523,      0.69813168, -0.68404031,  0.69813168, -0.68404031,  0.69813168,      -0.52400523,  0.69813168, -0.68404031,  0.69813168, -0.52400523,      0.69813168, -0.68404031, 0.69813168, -0.52400523,  0.69813168,      -0.68404031,  0.69813168, -0.52400523,  0.69813168, -0.52400523,      0.69813168, -0.11878235,  0.69813168, -0.52400523,  0.69813168,      -0.11878235,  0.69813168, -0.52400523,  0.69813168, -0.11878235,      0.69813168, -0.52400523,  0.69813168,-0.11878235,  0.69813168,      -0.11878235,  0.69813168,  0.34202015,  0.69813168, -0.11878235,      0.69813168,  0.34202015,  0.69813168, -0.11878235,  0.69813168,      0.34202015,  0.69813168, -0.11878235,  0.69813168,  0.34202015,      0.69813168,  0.34202015,  0.69813168,  0.64278764, 0.69813168,      0.34202015,  0.69813168,  0.64278764,  0.69813168,  0.34202015,      0.69813168,  0.64278764,  0.69813168,  0.34202015,  0.69813168,      0.64278764,  0.69813168,  0.64278764,  0.69813168,  0.64278764,      0.69813168,  0.64278764,  0.69813168,  0.64278764])
+      
+      @V_segment = new Float32Array([ 0.0       ,  0.94898039,  0.0       ,  0.94898039,  0.0       ,      0.94898039,  0.0       ,  0.94898039,  0.94898039,  1.72639   ,      0.94898039,  1.72639   ,  0.94898039,  1.72639   ,  0.94898039,      1.72639   ,  1.72639   ,  2.43455458,  1.72639   , 0.43455458,      1.72639   ,  2.43455458,  1.72639   ,  2.43455458,  2.43455458,      3.30746317,  2.43455458,  3.30746317,  2.43455458,  3.30746317,      2.43455458,  3.30746317,  3.30746317,  4.28485727,  3.30746317,      4.28485727,  3.30746317,  4.28485727,  3.30746317,  4.28485727,      0.28485727,  5.15776587,  4.28485727,  5.15776587,  4.28485727,      5.15776587,  4.28485727,  5.15776587,  5.15776587,  5.86593056,      5.15776587,  5.86593056,  5.15776587,  5.86593056,  5.15776587,      5.86593056,  5.86593056,  6.64334011,  5.86593056,  6.64334011,      5.86593056, 0.64334011,  5.86593056,  6.64334011,  6.64334011,      7.59232044,  6.64334011,  7.59232044,  6.64334011,  7.59232044,      6.64334011,  7.59232044])
+      
+      @V_angles = new Float32Array([ 0.0        , -0.28860709,  0.0        , -0.28860709,  0.0        ,
+       -0.28860709,  0.0        , -0.28860709, -0.28860709, -0.62407058,
+       -0.28860709, -0.62407058, -0.28860709, -0.62407058, -0.28860709,
+       -0.62407058, -0.62407058, -0.47534436, -0.62407058, -0.47534436,
+       -0.62407058, -0.47534436, -0.62407058, -0.47534436, -0.47534436,
+       -0.13132977, -0.47534436, -0.13132977, -0.47534436, -0.13132977,
+       -0.47534436, -0.13132977, -0.13132977,  0.13132977, -0.13132977,
+        0.13132977, -0.13132977,  0.13132977, -0.13132977,  0.13132977,
+        0.13132977,  0.47534436,  0.13132977,  0.47534436,  0.13132977,
+        0.47534436,  0.13132977,  0.47534436,  0.47534436,  0.62407058,
+        0.47534436,  0.62407058,  0.47534436,  0.62407058,  0.47534436,
+        0.62407058,  0.62407058,  0.28860709,  0.62407058,  0.28860709,
+        0.62407058,  0.28860709,  0.62407058,  0.28860709,  0.28860709,
+        0.0        ,  0.28860709,  0.0        ,  0.28860709,  0.0        ,
+        0.28860709,  0.0        ])
+      
+      @V_texcoord = new Float32Array([-1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1,
+       -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1,
+       -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,
+        1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,
+        1, -1,  1,  1])
       
       @vbo_position.set_size(@V_position.length*4);
       @vbo_position.set_data(0, @V_position)
@@ -466,20 +506,19 @@ class LineGLGlyph extends BaseGLGlyph
       @vbo_texcoord.set_size(@V_texcoord.length*4)
       @vbo_texcoord.set_data(0, @V_texcoord)
     
-    _set_visuals: (nvertices) ->
+    _set_visuals: () ->
       window.X = this
       
       color = color2rgba(@glyph.visuals.line.color.value(), @glyph.visuals.line.alpha.value())
       cap = @CAPS[@glyph.visuals.line.cap.value()]
       
       @prog.set_uniform('u_color', 'vec4', color)
-      @prog.set_uniform('u_linewidth', 'float', [5])#[@glyph.visuals.line.width.value()])
+      @prog.set_uniform('u_linewidth', 'float', [16])#[@glyph.visuals.line.width.value()])
       @prog.set_uniform('u_antialias', 'float', [0.9])  # Smaller aa-region to obtain crisper images
       
       @prog.set_uniform('u_linecaps', 'vec2', [cap, cap])
       @prog.set_uniform('u_linejoin', 'float', [@JOIN[@glyph.visuals.line.join.value()]])
       @prog.set_uniform('u_miter_limit', 'float', [10.0])  # Should be a good value
-      @prog.set_uniform('u_length', 'float', [@cumsum])
       @prog.set_uniform('u_dash_phase', 'float', [@glyph.visuals.line.dash_offset.value()])
       
       #@prog.set_uniform('u_dash_period', 'float', [@glyph.visuals.line.xxx.value()])
@@ -488,11 +527,12 @@ class LineGLGlyph extends BaseGLGlyph
       @prog.set_uniform('u_closed', 'float', [0])  # TODO: we dont do closed lines; rip this out
     
     _bake: () ->
-         #     self.vtype = np.dtype( [('a_position', 'f4', 2),
-         #                       ('a_segment',  'f4', 2),
-         #                       ('a_angles',   'f4', 2),
-         #                       ('a_tangents', 'f4', 4),
-         #                       ('a_texcoord', 'f4', 2) ])
+      console.log('BAAAAAAKING!!')
+      # self.vtype = np.dtype( [('a_position', 'f4', 2),
+      #                         ('a_segment',  'f4', 2),
+      #                         ('a_angles',   'f4', 2),
+      #                         ('a_tangents', 'f4', 4),
+      #                         ('a_texcoord', 'f4', 2) ])
       
       # This is what you get if you port 50 lines of numpy code to JS.
                               
@@ -507,22 +547,21 @@ class LineGLGlyph extends BaseGLGlyph
       V_angles = new Float32Array(n*2)
       V_tangents = Vt = new Float32Array(n*4)  # mind the 4!
       V_texcoord = new Float32Array(n*2)
-      
-      # todo: what if I split the tangents up in two arrays, I think it would simplify the code ...
-      
+            
       # Position
       for i in [0...n]
           V_position[i*2+0] = _x[i]
           V_position[i*2+1] = _y[i]
-      
+            
       # Tangents & norms
       T = new Float32Array(n*2-2)
       N = new Float32Array(n-1)
       for i in [0...n-1]
-        T[i*2+0] = Vp[i*2+0+1] - Vp[i*2+0]
-        T[i*2+1] = Vp[i*2+1+1] - Vp[i*2+1]
-        
-        N[i] = Math.sqrt(Math.pow(T[i*2+0], 2), Math.pow(T[i*2+1], 2))
+        T[i*2+0] = Vp[(i+1)*2+0] - Vp[i*2+0]
+        T[i*2+1] = Vp[(i+1)*2+1] - Vp[i*2+1]
+      
+      for i in [0...n-1]
+        N[i] = Math.sqrt(Math.pow(T[i*2+0], 2) + Math.pow(T[i*2+1], 2))
         
         # V['a_tangents'][+1:, :2] = T
         V_tangents[(i+1)*4+0] = T[i*2+0]
@@ -530,70 +569,63 @@ class LineGLGlyph extends BaseGLGlyph
         # V['a_tangents'][:-1, 2:] = T
         V_tangents[i*4+2] = T[i*2+0]
         V_tangents[i*4+3] = T[i*2+1]
-         
+            
       # V['a_tangents'][0  , :2] = T[0]
-      V_tangents[0*i+0] = T[0]
-      V_tangents[0*i+1] = T[1]
+      V_tangents[0*4+0] = T[0]
+      V_tangents[0*4+1] = T[1]
       # V['a_tangents'][ -1, 2:] = T[-1]
-      V_tangents[(n-1)+2] = T[(n-2)+0]
-      V_tangents[(n-1)+3] = T[(n-2)+1]
+      V_tangents[(n-1)*4+2] = T[(n-2)*2+0]
+      V_tangents[(n-1)*4+3] = T[(n-2)*2+1]
       
       # Angles
       A = new Float32Array(n)
       for i in [0...n]
         A[i] = Math.atan2(Vt[i*4+0]*Vt[i*4+3] - Vt[i*4+1]*Vt[i*4+2],
-                          Vt[i*4+0]*Vt[i*4+2] - Vt[i*4+1]*Vt[i*4+3])
+                          Vt[i*4+0]*Vt[i*4+2] + Vt[i*4+1]*Vt[i*4+3])
       for i in [0...n-1]
         V_angles[i*2+0] = A[i]
         V_angles[i*2+1] = A[i+1]
-      
+         
       # Segment
       cumsum = 0
       for i in [0...n-1]
-        cumsum += i
+        cumsum += N[i]
         V_segment[(i+1)*2+0] = cumsum
         V_segment[i*2+1] = cumsum
-      
+            
       # Step 1: A -- B -- C  =>  A -- B, B' -- C
       
       # Repeat our array 4 times
-      m = 4 * n
+      m = 4 * n - 4
       @V_position = V_position2 = new Float32Array(m*2)
       @V_segment = V_segment2 = new Float32Array(m*2)
       @V_angles = V_angles2 = new Float32Array(m*2)
       @V_tangents = V_tangents2 = new Float32Array(m*4)  # mind the 4!
       @V_texcoord = V_texcoord2 = new Float32Array(m*2)
+      o = 2
       #
       # Arg, we really need an ndarray thing in JS :/
       for i in [0...n]  # all nodes on the line
          for j in [0...4]  # the four quad vertices
             for k in [0...2]  # xy
-              V_position2[4*i*2+j*2+k] = V_position[i*2+k]
-              V_segment2[4*i*2+j*2+k] = V_segment[i*2+k]
-              V_angles2[4*i*2+j*2+k] = V_angles[i*2+k]
+              V_position2[(i*4+j-o)*2+k] = V_position[i*2+k]
+              V_segment2[(i*4+j)*2+k] = V_segment[i*2+k]  # no offset
+              V_angles2[(i*4+j)*2+k] = V_angles[i*2+k]  # no offset
               #V_texcoord2[4*i*2+j*2+k] = V_texcoord[i*2+k]
             for k in [0...4]
-              V_tangents2[4*i*4+j*4+k] = V_tangents[i*4+k]
+              V_tangents2[(i*4+j-o)*4+k] = V_tangents[i*4+k]
       
-      for i in [0..n]         
-        V_texcoord2[4*i*2+0*2+0] = -1
-        V_texcoord2[4*i*2+1*2+0] = -1
-        V_texcoord2[4*i*2+2*2+0] = +1
-        V_texcoord2[4*i*2+3*2+0] = +1
+      for i in [0..n]
+        V_texcoord2[(i*4+0)*2+0] = -1
+        V_texcoord2[(i*4+1)*2+0] = -1
+        V_texcoord2[(i*4+2)*2+0] = +1
+        V_texcoord2[(i*4+3)*2+0] = +1
         #
-        V_texcoord2[4*i*2+0*2+1] = -1
-        V_texcoord2[4*i*2+1*2+1] = +1
-        V_texcoord2[4*i*2+2*2+1] = -1
-        V_texcoord2[4*i*2+3*2+1] = +1
-      
-      # Note: we need to strip two elements on each side, but we'll do that by
-      # giving nonzero offset and a smaller count to opengl. 
-      V_position2.gl_offset = 4
-      V_segment2.gl_offset = 0
-      V_angles2.gl_offset = 0
-      V_tangents2.gl_offset = 8
-      V_texcoord2.gl_offset = 0
-      
+        V_texcoord2[(i*4+0)*2+1] = -1
+        V_texcoord2[(i*4+1)*2+1] = +1
+        V_texcoord2[(i*4+2)*2+1] = -1
+        V_texcoord2[(i*4+3)*2+1] = +1
+            
       # Indices
       #I = np.resize( np.array([0,1,2,1,2,3], dtype=np.uint32), (n-1)*(2*3))
       #I += np.repeat( 4*np.arange(n-1), 6)
@@ -603,20 +635,19 @@ class LineGLGlyph extends BaseGLGlyph
         I[i*6+0] = 0 + 4*i
         I[i*6+1] = 1 + 4*i
         I[i*6+2] = 2 + 4*i
-        I[i*6+3] = 0 + 4*i
-        I[i*6+4] = 3 + 4*i
-        I[i*6+5] = 1 + 4*i
-      #for i in [0...n]
-      #  I[i*6+0] = 0 + 4*i
-      #  I[i*6+1] = 1 + 4*i
-      #  I[i*6+2] = 2 + 4*i
-      #  I[i*6+3] = 1 + 4*i
-      #  I[i*6+4] = 2 + 4*i
-      #  I[i*6+5] = 3 + 4*i
-            
+        I[i*6+3] = 1 + 4*i
+        I[i*6+4] = 2 + 4*i
+        I[i*6+5] = 3 + 4*i
+      if 0
+        for i in [0...n]
+          I[i*6+0] = 0 + 4*i
+          I[i*6+1] = 1 + 4*i
+          I[i*6+2] = 2 + 4*i
+          I[i*6+3] = 3 + 4*i
+          I[i*6+4] = 1 + 4*i
+          I[i*6+5] = 0 + 4*i     
       # todo: if I is larger than 65k, we need to draw in parts
       @cumsum = cumsum  # L[-1] in Nico's code
-
 
 class MarkerGLGlyph extends BaseGLGlyph
   # Base class for markers. All markers share the same GLSL, except for one
@@ -831,7 +862,7 @@ class MarkerGLGlyph extends BaseGLGlyph
     @vbo_x.set_data(0, new Float32Array(@glyph.x))
     @vbo_y.set_data(0, new Float32Array(@glyph.y))
     # Angle if available; circle does not have angle. If we don't set data, angle is default 0 in glsl
-    if @glyph.angle?  
+    if @glyph.angle?
       @vbo_a.set_data(0, new Float32Array(@glyph.angle))
     # Radius is special; some markes allow radius in data-coords instead of screen coords
     # @radius tells us that radius is in units, sradius is the pre-calculated screen radius 

@@ -2,7 +2,7 @@ import numpy as np
 
 from bokeh.plotting import figure, show, output_file
 
-x = np.linspace(0, 4*np.pi, 200)
+x = np.linspace(0, 2*np.pi, 10)
 y = np.sin(x) + 0.2
 
 output_file("line.html", title="line.py example")
