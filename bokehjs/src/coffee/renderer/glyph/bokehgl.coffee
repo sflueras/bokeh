@@ -196,7 +196,6 @@ class LineGLGlyph extends BaseGLGlyph
       void main()
       {          
           v_color = u_color;
-          float scale = 1.0;//u_scale;  // TODO: does this make sense?
           v_linewidth = u_linewidth;
           v_antialias = u_antialias;
           v_linecaps = u_linecaps;
@@ -210,17 +209,20 @@ class LineGLGlyph extends BaseGLGlyph
           v_closed = u_closed;
           bool closed = (v_closed > 0.0);
           
+          // Scale to map to pixel coordinates. The original algorithm from the paper
+          // assumed anisotropic scale. We obviously do not have this.
+          vec2 scale = abs(u_scale);
+          
           // Attributes to varyings
           v_angles  = a_angles;
           v_segment = a_segment * scale;
-          v_length  = v_length * scale;
-      
+          v_length  = v_length * length(scale); // TODO: store length as vec2 and scale it anisotropically!
+          
           // Thickness below 1 pixel are represented using a 1 pixel thickness
           // and a modified alpha
           v_color.a = min(v_linewidth, v_color.a);
           v_linewidth = max(v_linewidth, 1.0);
-      
-      
+          
           // If color is fully transparent we just will discard the fragment anyway
           if( v_color.a <= 0.0 )
           {
@@ -230,11 +232,11 @@ class LineGLGlyph extends BaseGLGlyph
       
           // This is the actual half width of the line
           float w = ceil(1.25*v_antialias+v_linewidth)/2.0;
-      
-          vec2 position = a_position * scale * u_scale;
           
-          vec2 t1 = normalize(a_tangents.xy);
-          vec2 t2 = normalize(a_tangents.zw);
+          vec2 position = a_position * scale;
+          
+          vec2 t1 = normalize(a_tangents.xy * scale);  // note the scaling for aspect ratio here
+          vec2 t2 = normalize(a_tangents.zw * scale);
           float u = a_texcoord.x;
           float v = a_texcoord.y;
           vec2 o1 = vec2( +t1.y, -t1.x);
@@ -244,7 +246,7 @@ class LineGLGlyph extends BaseGLGlyph
           // This is a join
           // ----------------------------------------------------------------
           if( t1 != t2 ) {
-              float angle  = atan (t1.x*t2.y-t1.y*t2.x, t1.x*t2.x+t1.y*t2.y);
+              float angle  = atan (t1.x*t2.y-t1.y*t2.x, t1.x*t2.x+t1.y*t2.y);  // TODO: do we even need the angles then?
               vec2 t  = normalize(t1+t2);
               vec2 o  = vec2( + t.y, - t.x);
       
@@ -319,10 +321,10 @@ class LineGLGlyph extends BaseGLGlyph
               position += v * w * o1;
               if( u == -1.0 ) {
                   u = v_segment.x - w;
-                  position -=  w * t1;
+                  position -= w * t1;
               } else {
                   u = v_segment.y + w;
-                  position +=  w * t2;
+                  position += w * t2;
               }
           }
       
@@ -358,13 +360,9 @@ class LineGLGlyph extends BaseGLGlyph
       
           v_texcoord = vec2( u, v*w );
           
-          // Calculate position - the -0.5 is to correct for canvas origin
-          //vec2 posn = position * u_scale + u_offset - vec2(0.5, 0.5); // in pixels
-          //posn /= u_canvas_size;  // in 0..1
-          //gl_Position = vec4(posn*2.0-1.0, 0.0, 1.0);
-          
-          //vec2 normpos = a_position * u_scale + u_offset - vec2(0.5, 0.5);
-          vec2 normpos = position + u_offset - vec2(0.5, 0.5);
+          // Calculate position in device coordinates. Note that we 
+          // already scaled with abs(u_scale) above.
+          vec2 normpos = position * sign(u_scale) + (u_offset - vec2(0.5, 0.5));
           normpos /= u_canvas_size;  // in 0..1     
           gl_Position = vec4(normpos*2.0-1.0, 0.0, 1.0);
           gl_Position.y *= -1.0;
@@ -423,7 +421,7 @@ class LineGLGlyph extends BaseGLGlyph
       if @visuals_changed
         @_set_visuals()
         @visuals_changed = false
-      
+            
       # Select buffers from main glyph 
       # (which may be this glyph but maybe not if this is a (non)selection glyph)
       @prog.set_attribute('a_position', 'vec2', [mainGlyph.glglyph.vbo_position, 0, 0])
@@ -442,54 +440,11 @@ class LineGLGlyph extends BaseGLGlyph
       #@prog.draw(@gl.TRIANGLES, [0, nvertices])
       @index_buffer.set_size(@I_triangles.length*2)
       @index_buffer.set_data(0, new Uint16Array(@I_triangles))
-      @prog.draw(@gl.TRIANGLES, @index_buffer)
+      @prog.draw(@gl.LINE_STRIP, @index_buffer)
       window.Y = @I_triangles
     
     _set_data: () ->
-      #@_bake()
-      
-      @I_triangles = new Int32Array([ 0,  1,  2,  1,  2,  3,  4,  5,  6,  5,  6,  7,  8,  9, 10,  9, 10, 11, 12, 13, 14, 13, 14, 15, 16, 17, 18, 17, 18, 19, 20, 21, 22, 21,      22, 23, 24, 25, 26, 25, 26, 27, 28, 29, 30, 29, 30, 31, 32, 33, 34,      33, 34, 35])
-      @V_position = new Float32Array([ 0.0        ,  0.2       ,  0.0        ,  0.2       ,  0.69813168,
-        0.84278762,  0.69813168,  0.84278762,  0.69813168,  0.84278762,
-        0.69813168,  0.84278762,  1.39626336,  1.18480778,  1.39626336,
-        1.18480778,  1.39626336,  1.18480778,  1.39626336,  1.18480778,
-        2.09439516,  1.06602538,  2.09439516,  1.06602538,  2.09439516,
-        1.06602538,  2.09439516,  1.06602538,  2.79252672,  0.54202014,
-        2.79252672,  0.54202014,  2.79252672,  0.54202014,  2.79252672,
-        0.54202014,  3.49065852, -0.14202014,  3.49065852, -0.14202014,
-        3.49065852, -0.14202014,  3.49065852, -0.14202014,  4.18879032,
-       -0.6660254 ,  4.18879032, -0.6660254 ,  4.18879032, -0.6660254 ,
-        4.18879032, -0.6660254 ,  4.88692188, -0.78480774,  4.88692188,
-       -0.78480774,  4.88692188, -0.78480774,  4.88692188, -0.78480774,
-        5.58505344, -0.44278762,  5.58505344, -0.44278762,  5.58505344,
-       -0.44278762,  5.58505344, -0.44278762,  6.28318548,  0.2       ,
-        6.28318548,  0.2       ])
-      
-      @V_tangents = new Float32Array([ 0.69813168,  0.64278764,  0.69813168,  0.64278764,  0.69813168,      0.64278764,  0.69813168,  0.64278764,  0.69813168,  0.64278764,      0.69813168,  0.34202015,  0.69813168,  0.64278764,  0.69813168,      0.34202015,  0.69813168,  0.64278764,  0.69813168, 0.34202015,      0.69813168,  0.64278764,  0.69813168,  0.34202015,  0.69813168,      0.34202015,  0.69813168, -0.11878235,  0.69813168,  0.34202015,      0.69813168, -0.11878235,  0.69813168,  0.34202015,  0.69813168,      -0.11878235,  0.69813168,  0.34202015,  0.69813168, -0.11878235,      0.69813168, -0.11878235,  0.69813168, -0.52400523,  0.69813168,      -0.11878235,  0.69813168, -0.52400523,  0.69813168, -0.11878235,      0.69813168, -0.52400523,  0.69813168, -0.11878235,  0.69813168,      -0.52400523,  0.69813168, -0.52400523,  0.69813168, -0.68404031,      0.69813168,-0.52400523,  0.69813168, -0.68404031,  0.69813168,      -0.52400523,  0.69813168, -0.68404031,  0.69813168, -0.52400523,      0.69813168, -0.68404031,  0.69813168, -0.68404031,  0.69813168,      -0.52400523,  0.69813168, -0.68404031,  0.69813168, -0.52400523,      0.69813168, -0.68404031, 0.69813168, -0.52400523,  0.69813168,      -0.68404031,  0.69813168, -0.52400523,  0.69813168, -0.52400523,      0.69813168, -0.11878235,  0.69813168, -0.52400523,  0.69813168,      -0.11878235,  0.69813168, -0.52400523,  0.69813168, -0.11878235,      0.69813168, -0.52400523,  0.69813168,-0.11878235,  0.69813168,      -0.11878235,  0.69813168,  0.34202015,  0.69813168, -0.11878235,      0.69813168,  0.34202015,  0.69813168, -0.11878235,  0.69813168,      0.34202015,  0.69813168, -0.11878235,  0.69813168,  0.34202015,      0.69813168,  0.34202015,  0.69813168,  0.64278764, 0.69813168,      0.34202015,  0.69813168,  0.64278764,  0.69813168,  0.34202015,      0.69813168,  0.64278764,  0.69813168,  0.34202015,  0.69813168,      0.64278764,  0.69813168,  0.64278764,  0.69813168,  0.64278764,      0.69813168,  0.64278764,  0.69813168,  0.64278764])
-      
-      @V_segment = new Float32Array([ 0.0       ,  0.94898039,  0.0       ,  0.94898039,  0.0       ,      0.94898039,  0.0       ,  0.94898039,  0.94898039,  1.72639   ,      0.94898039,  1.72639   ,  0.94898039,  1.72639   ,  0.94898039,      1.72639   ,  1.72639   ,  2.43455458,  1.72639   , 0.43455458,      1.72639   ,  2.43455458,  1.72639   ,  2.43455458,  2.43455458,      3.30746317,  2.43455458,  3.30746317,  2.43455458,  3.30746317,      2.43455458,  3.30746317,  3.30746317,  4.28485727,  3.30746317,      4.28485727,  3.30746317,  4.28485727,  3.30746317,  4.28485727,      0.28485727,  5.15776587,  4.28485727,  5.15776587,  4.28485727,      5.15776587,  4.28485727,  5.15776587,  5.15776587,  5.86593056,      5.15776587,  5.86593056,  5.15776587,  5.86593056,  5.15776587,      5.86593056,  5.86593056,  6.64334011,  5.86593056,  6.64334011,      5.86593056, 0.64334011,  5.86593056,  6.64334011,  6.64334011,      7.59232044,  6.64334011,  7.59232044,  6.64334011,  7.59232044,      6.64334011,  7.59232044])
-      
-      @V_angles = new Float32Array([ 0.0        , -0.28860709,  0.0        , -0.28860709,  0.0        ,
-       -0.28860709,  0.0        , -0.28860709, -0.28860709, -0.62407058,
-       -0.28860709, -0.62407058, -0.28860709, -0.62407058, -0.28860709,
-       -0.62407058, -0.62407058, -0.47534436, -0.62407058, -0.47534436,
-       -0.62407058, -0.47534436, -0.62407058, -0.47534436, -0.47534436,
-       -0.13132977, -0.47534436, -0.13132977, -0.47534436, -0.13132977,
-       -0.47534436, -0.13132977, -0.13132977,  0.13132977, -0.13132977,
-        0.13132977, -0.13132977,  0.13132977, -0.13132977,  0.13132977,
-        0.13132977,  0.47534436,  0.13132977,  0.47534436,  0.13132977,
-        0.47534436,  0.13132977,  0.47534436,  0.47534436,  0.62407058,
-        0.47534436,  0.62407058,  0.47534436,  0.62407058,  0.47534436,
-        0.62407058,  0.62407058,  0.28860709,  0.62407058,  0.28860709,
-        0.62407058,  0.28860709,  0.62407058,  0.28860709,  0.28860709,
-        0.0        ,  0.28860709,  0.0        ,  0.28860709,  0.0        ,
-        0.28860709,  0.0        ])
-      
-      @V_texcoord = new Float32Array([-1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1,
-       -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1,
-       -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,
-        1,  1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1, -1,  1,
-        1, -1,  1,  1])
+      @_bake()
       
       @vbo_position.set_size(@V_position.length*4);
       @vbo_position.set_data(0, @V_position)
@@ -513,7 +468,7 @@ class LineGLGlyph extends BaseGLGlyph
       cap = @CAPS[@glyph.visuals.line.cap.value()]
       
       @prog.set_uniform('u_color', 'vec4', color)
-      @prog.set_uniform('u_linewidth', 'float', [16])#[@glyph.visuals.line.width.value()])
+      @prog.set_uniform('u_linewidth', 'float', [16.0])#[@glyph.visuals.line.width.value()])
       @prog.set_uniform('u_antialias', 'float', [0.9])  # Smaller aa-region to obtain crisper images
       
       @prog.set_uniform('u_linecaps', 'vec2', [cap, cap])
@@ -638,14 +593,14 @@ class LineGLGlyph extends BaseGLGlyph
         I[i*6+3] = 1 + 4*i
         I[i*6+4] = 2 + 4*i
         I[i*6+5] = 3 + 4*i
-      if 0
+      if 1
         for i in [0...n]
           I[i*6+0] = 0 + 4*i
           I[i*6+1] = 1 + 4*i
-          I[i*6+2] = 2 + 4*i
-          I[i*6+3] = 3 + 4*i
-          I[i*6+4] = 1 + 4*i
-          I[i*6+5] = 0 + 4*i     
+          I[i*6+2] = 3 + 4*i
+          I[i*6+3] = 2 + 4*i
+          I[i*6+4] = 0 + 4*i
+          I[i*6+5] = 3 + 4*i     
       # todo: if I is larger than 65k, we need to draw in parts
       @cumsum = cumsum  # L[-1] in Nico's code
 
