@@ -95,9 +95,10 @@ from .utils import out_of_date
 from .. import io
 from ..document import Document
 from ..embed import autoload_static
-from ..resources import CDN
+from ..resources import Resources
 from ..util.string import decode_utf8
 
+resources = Resources(mode='relative-dev')
 
 SOURCE_TEMPLATE = jinja2.Template(u"""
 .. code-block:: python
@@ -281,7 +282,7 @@ def html_visit_bokeh_plot(self, node):
             if out_of_date(path, cached_path) or not exists(cached_path+".script"):
                 self.builder.app.verbose("generating new plot for '%s'" % path)
                 plot = _render_plot(node['source'], node.get('symbol'))
-                js, script = autoload_static(plot, CDN, filename)
+                js, script = autoload_static(plot, resources, filename)
                 with open(cached_path, "w") as f:
                     f.write(js)
                 with open(cached_path+".script", "w") as f:
@@ -297,7 +298,7 @@ def html_visit_bokeh_plot(self, node):
             if not exists(dest_dir): makedirs(dest_dir)
             dest_path = join(dest_dir, filename)
             plot = _render_plot(node['source'], None)
-            js, script = autoload_static(plot, CDN, filename)
+            js, script = autoload_static(plot, resources, filename)
             self.builder.app.verbose("saving inline plot at: %s" % dest_path)
             with open(dest_path, "w") as f:
                 f.write(js)
