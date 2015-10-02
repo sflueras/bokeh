@@ -884,7 +884,7 @@ class CrossFilter(PlotObject):
             desc = self.df[c].describe()
 
             # DiscreteColumn
-            if self.df[c].dtype == object:
+            if 'top' in desc.index:
                 descriptors.append({
                     'type': "DiscreteColumn",
                     'name': c,
@@ -895,7 +895,7 @@ class CrossFilter(PlotObject):
                 })
 
             # TimeColumn
-            elif self.df[c].dtype == np.datetime64:
+            elif 'first' in desc.index:
                 descriptors.append({
                     'type': "TimeColumn",
                     'name': c,

@@ -39,6 +39,7 @@ class BokehJSONEncoder(json.JSONEncoder):
         elif np.issubdtype(type(obj), np.bool_):
             return bool(obj)
         # Datetime
+        # FIX ME: handle NaT
         # datetime is a subclass of date.
         elif isinstance(obj, dt.datetime):
             return calendar.timegm(obj.timetuple()) * 1000. + obj.microsecond / 1000.
