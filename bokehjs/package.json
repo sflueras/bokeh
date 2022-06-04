@@ -89,6 +89,6 @@
     "mathutils": "0.0.1",
     "rbush": "^1.3.5",
     "sprintf": "^0.1.5",
-    "timezone": "0.0.38"
+    "timezone": "0.0.48"
   }
 }
